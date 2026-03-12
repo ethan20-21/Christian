@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string, redirect, url_for
 
 app = Flask(__name__)
 
@@ -12,7 +12,6 @@ students = [
 ]
 
 # --- THE PROFESSIONAL UI TEMPLATE ---
-# In a real project, save this HTML to 'templates/index.html'
 base_html = """
 <!DOCTYPE html>
 <html lang="en">
@@ -70,22 +69,6 @@ base_html = """
         tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
         td { padding: 15px; vertical-align: middle; }
         .badge { padding: 5px 10px; border-radius: 20px; font-size: 0.75rem; background: rgba(255,255,255,0.1); }
-        
-        /* Modal Styles */
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); align-items: center; justify-content: center;
-        }
-        .modal-content {
-            background: #1e293b; border: 1px solid var(--glass-border); padding: 30px;
-            border-radius: 20px; width: 100%; max-width: 450px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-control {
-            width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-            border-radius: 10px; color: white; margin-top: 5px;
-        }
-        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -135,7 +118,6 @@ base_html = """
         </div>
     </div>
 
-    <!-- Simple JS for Search Filter -->
     <script>
         function filterTable(value) {
             const rows = document.getElementById('studentTable').getElementsByTagName('tr');
@@ -154,6 +136,7 @@ base_html = """
 </html>
 """
 
+# UPDATED FORM HTML with dynamic action
 form_html = """
 <!DOCTYPE html>
 <html lang="en">
@@ -186,7 +169,9 @@ form_html = """
 <body>
     <div class="glass-card">
         <h2 class="mb-4 text-center">{{ title }}</h2>
-        <form method="POST">
+        
+        <!-- FIX IS HERE: Added 'action' attribute dynamically -->
+        <form method="POST" action="{% if student %}/edit_student/{{ student.id }}{% else %}/add_student{% endif %}">
             <label>Full Name</label>
             <input type="text" name="name" class="form-control" value="{{ student.name if student else '' }}" required>
             
