@@ -1,19 +1,25 @@
-from flask import Flask, request, render_template_string, redirect, url_for, jsonify
+from flask import Flask, request, render_template_string, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
 
 # --- DATABASE CONFIGURATION ---
-# Kukunin ang DATABASE_URL mula sa Render Environment Variables
+# Sinisiguro nito na gagana ang app sa local (sqlite) o sa Render (postgresql)
 db_url = os.environ.get('DATABASE_URL')
 
-# Fix para sa "postgres://" vs "postgresql://"
-if db_url and db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+if db_url:
+    # Fix para sa "postgres://" issue ng Render/Heroku
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+else:
+    # Fallback sa local sqlite kung walang environment variable
+    db_url = 'sqlite:///local_test.db'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'my-secret-key-123' # Importante para sa Flask forms
+
 db = SQLAlchemy(app)
 
 # --- DATABASE MODEL ---
@@ -23,9 +29,13 @@ class Student(db.Model):
     grade = db.Column(db.Integer, nullable=False)
     section = db.Column(db.String(50), nullable=False)
 
-# Gagawa ng tables sa PostgreSQL kung wala pa
+# Gagawa ng tables sa PostgreSQL kung wala pa (Safe Initialization)
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+        print("Database tables created successfully!")
+    except Exception as e:
+        print(f"Database error: {e}")
 
 # --- THE PROFESSIONAL UI TEMPLATES ---
 base_html = """
@@ -171,7 +181,6 @@ form_html = """
 @app.route('/')
 @app.route('/students')
 def list_students():
-    # Kukuha ng records mula sa PostgreSQL
     all_students = Student.query.order_by(Student.id.asc()).all()
     return render_template_string(base_html, students=all_students)
 
@@ -185,24 +194,20 @@ def add_student():
     grade = int(request.form.get("grade"))
     section = request.form.get("section")
     
-    # Save sa Database
     new_student = Student(name=name, grade=grade, section=section)
     db.session.add(new_student)
     db.session.commit()
-    
     return redirect(url_for('list_students'))
 
 @app.route('/edit_student/<int:id>', methods=['GET', 'POST'])
 def edit_student(id):
     student = Student.query.get_or_404(id)
-
     if request.method == 'POST':
         student.name = request.form["name"]
         student.grade = int(request.form["grade"])
         student.section = request.form["section"]
         db.session.commit()
         return redirect(url_for('list_students'))
-
     return render_template_string(form_html, title="Edit Student", student=student)
 
 @app.route('/delete_student/<int:id>')
@@ -213,4 +218,7 @@ def delete_student(id):
     return redirect(url_for('list_students'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Local development: app.run(debug=True)
+    # Render deployment: Gunicorn is usually used
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
