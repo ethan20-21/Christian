@@ -108,7 +108,6 @@ base_html = """
                             <th>Name</th>
                             <th>Section</th>
                             <th>Grade</th>
-                            <th>Remarks</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
